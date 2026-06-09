@@ -1,0 +1,18 @@
+# Generated migration to add resume file upload field
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('portfolio', '0003_alter_profile_resume_url'),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name='profile',
+            name='resume',
+            field=models.FileField(blank=True, help_text='Upload your resume (PDF)', null=True, upload_to='resumes/'),
+        ),
+    ]
