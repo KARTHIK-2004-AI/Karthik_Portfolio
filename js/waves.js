@@ -27,35 +27,35 @@ class GlowyWaves {
         offset: 0,
         amplitude: 70,
         frequency: 0.003,
-        color: 'rgba(191, 138, 48, 0.8)',
+        color: 'rgba(253, 251, 212, 0.8)',
         opacity: 0.45
       },
       {
         offset: Math.PI / 2,
         amplitude: 90,
         frequency: 0.0026,
-        color: 'rgba(200, 169, 110, 0.7)',
+        color: 'rgba(253, 251, 212, 0.65)',
         opacity: 0.35
       },
       {
         offset: Math.PI,
         amplitude: 60,
         frequency: 0.0034,
-        color: 'rgba(154, 112, 40, 0.65)',
+        color: 'rgba(253, 251, 212, 0.55)',
         opacity: 0.3
       },
       {
         offset: Math.PI * 1.5,
         amplitude: 80,
         frequency: 0.0022,
-        color: 'rgba(191, 138, 48, 0.25)',
+        color: 'rgba(253, 251, 212, 0.22)',
         opacity: 0.25
       },
       {
         offset: Math.PI * 2,
         amplitude: 55,
         frequency: 0.004,
-        color: 'rgba(29, 29, 31, 0.2)',
+        color: 'rgba(56, 36, 13, 0.2)',
         opacity: 0.2
       }
     ];
