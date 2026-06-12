@@ -219,6 +219,9 @@
           profileImg.alt = profile.name;
           profileImg.style.display = 'block';
           profileImg.innerHTML = '';
+          if (profileImg.parentElement) {
+            profileImg.parentElement.classList.remove('profile-fallback');
+          }
         }
       }
 
