@@ -89,8 +89,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
-    ('css', BASE_DIR / 'css'),
-    ('js', BASE_DIR / 'js'),
+    BASE_DIR / 'static',
 ]
 STORAGES = {
     "default": {

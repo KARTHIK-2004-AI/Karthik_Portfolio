@@ -24,6 +24,9 @@ python manage.py migrate
 # Create superuser (you'll be prompted for username, email, password)
 python manage.py createsuperuser
 
+# Load default portfolio content (otherwise the API returns 404 / the site shows empty data)
+python manage.py load_default_data
+
 # Collect static files
 python manage.py collectstatic --noinput
 ```
