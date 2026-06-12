@@ -298,6 +298,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   background: var(--accent);
   border-radius: 0 4px 4px 0;
   box-shadow: 0 0 12px rgba(91, 14, 20, 0.36);
+}
 
 .mobile-menu.open .mobile-nav-link { opacity: 1; transform: translateY(0); }
 .mobile-menu.open .mobile-nav-link:nth-child(1) { transition-delay: 0.08s; }
