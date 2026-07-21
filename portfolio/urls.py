@@ -6,7 +6,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     ProfileViewSet, ProjectViewSet, SkillViewSet,
     ExperienceViewSet, EducationViewSet, ContactInfoViewSet,
-    SocialLinkViewSet, SiteSettingsViewSet, SectionViewSet
+    SocialLinkViewSet, SiteSettingsViewSet, SectionViewSet,
+    ContactMessageViewSet
 )
 
 # Create router and register viewsets
@@ -20,6 +21,7 @@ router.register(r'contact', ContactInfoViewSet, basename='contact')
 router.register(r'socials', SocialLinkViewSet, basename='social')
 router.register(r'site-settings', SiteSettingsViewSet, basename='site-settings')
 router.register(r'sections', SectionViewSet, basename='section')
+router.register(r'messages', ContactMessageViewSet, basename='message')
 
 urlpatterns = [
     path('', include(router.urls)),

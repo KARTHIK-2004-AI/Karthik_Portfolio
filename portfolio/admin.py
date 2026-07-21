@@ -1,17 +1,95 @@
 """
 Portfolio app admin - Django admin customization
 """
+from django import forms
 from django.contrib import admin
 from django.utils.html import format_html
+import json
+
 from .models import (
     Profile, Project, Skill, Experience,
     Education, ContactInfo, SocialLink,
-    SiteSettings, Section
+    SiteSettings, Section, ContactMessage
 )
+
+
+class BulletListFormField(forms.CharField):
+    """Formfield allowing plain text line-by-line bullet points in Django Admin for JSON fields."""
+    widget = forms.Textarea(attrs={'rows': 6, 'placeholder': '- First achievement/responsibility\n- Second achievement/responsibility'})
+
+    def prepare_value(self, value):
+        if isinstance(value, list):
+            return "\n".join(f"- {item.lstrip('- ').strip()}" for item in value if item)
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return "\n".join(f"- {item.lstrip('- ').strip()}" for item in parsed if item)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return value or ""
+
+    def clean(self, value):
+        value = super().clean(value)
+        if not value:
+            return []
+        lines = []
+        for line in value.splitlines():
+            cleaned = line.strip()
+            if cleaned.startswith(('-', '*', '•')):
+                cleaned = cleaned[1:].strip()
+            if cleaned:
+                lines.append(cleaned)
+        return lines
+
+
+class TechStackFormField(forms.CharField):
+    """Formfield allowing comma-separated text in Django Admin for JSON tech_stack lists."""
+    widget = forms.TextInput(attrs={'placeholder': 'Python, Django, React, PostgreSQL'})
+
+    def prepare_value(self, value):
+        if isinstance(value, list):
+            return ", ".join(value)
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return ", ".join(parsed)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return value or ""
+
+    def clean(self, value):
+        value = super().clean(value)
+        if not value:
+            return []
+        items = [item.strip() for item in value.replace('\n', ',').split(',') if item.strip()]
+        return items
+
+
+class ExperienceAdminForm(forms.ModelForm):
+    bullets = BulletListFormField(
+        required=False,
+        help_text="Enter bullet points (one per line). Plain text lines starting with - or * will be converted automatically."
+    )
+    class Meta:
+        model = Experience
+        fields = '__all__'
+
+
+class ProjectAdminForm(forms.ModelForm):
+    tech_stack = TechStackFormField(
+        required=False,
+        help_text="Enter technologies separated by commas (e.g., Python, Django, HTML/CSS)."
+    )
+    class Meta:
+        model = Project
+        fields = '__all__'
 
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
+
     """Admin for Profile model"""
     list_display = ['name', 'tagline', 'is_available', 'updated_at']
     list_editable = ['is_available']
@@ -71,6 +149,7 @@ class ProfileAdmin(admin.ModelAdmin):
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
     """Admin for Project model"""
+    form = ProjectAdminForm
     list_display = ['title', 'is_featured', 'order', 'created_at', 'thumbnail_preview']
     list_editable = ['is_featured', 'order']
     list_filter = ['is_featured', 'created_at']
@@ -127,6 +206,7 @@ class SkillAdmin(admin.ModelAdmin):
 @admin.register(Experience)
 class ExperienceAdmin(admin.ModelAdmin):
     """Admin for Experience model"""
+    form = ExperienceAdminForm
     list_display = ['company', 'role', 'start_date', 'end_date', 'is_current', 'order']
     list_editable = ['order']
     list_filter = ['start_date', 'end_date']
@@ -287,3 +367,16 @@ class SectionAdmin(admin.ModelAdmin):
 admin.site.site_header = "Portfolio Admin"
 admin.site.site_title = "Portfolio Admin"
 admin.site.index_title = "Welcome to Portfolio Administration"
+
+
+@admin.register(ContactMessage)
+class ContactMessageAdmin(admin.ModelAdmin):
+    """Admin for ContactMessage model"""
+    list_display = ['name', 'email', 'subject', 'created_at']
+    readonly_fields = ['name', 'email', 'subject', 'message', 'created_at']
+    search_fields = ['name', 'email', 'subject', 'message']
+    ordering = ['-created_at']
+
+    def has_add_permission(self, request):
+        return False  # Messages should only be created via frontend POST
+

@@ -4,7 +4,8 @@ Portfolio app serializers - DRF serializers for all models
 from rest_framework import serializers
 from .models import (
     Profile, Project, Skill, Experience, 
-    Education, ContactInfo, SocialLink, SiteSettings, Section
+    Education, ContactInfo, SocialLink, SiteSettings, Section,
+    ContactMessage
 )
 
 
@@ -194,3 +195,12 @@ class ProjectReorderSerializer(serializers.Serializer):
     """Serializer for reordering projects"""
     id = serializers.IntegerField()
     order = serializers.IntegerField()
+
+
+class ContactMessageSerializer(serializers.ModelSerializer):
+    """Serializer for ContactMessage model"""
+    class Meta:
+        model = ContactMessage
+        fields = ['id', 'name', 'email', 'subject', 'message', 'created_at']
+        read_only_fields = ['id', 'created_at']
+

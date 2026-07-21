@@ -75,11 +75,22 @@
   /* ========================================================
      API DATA FETCHING
      ======================================================== */
+  function getCacheBustedUrl(url, timestamp) {
+    if (!url) return '';
+    const t = timestamp ? new Date(timestamp).getTime() : Date.now();
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}t=${t}`;
+  }
+
   async function fetchAPI(endpoint) {
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      return await response.json();
+      const data = await response.json();
+      if (data && typeof data === 'object' && Array.isArray(data.results)) {
+        return data.results;
+      }
+      return data;
     } catch (error) {
       console.error(`Error fetching ${endpoint}:`, error);
       return null;
@@ -103,12 +114,19 @@
       '--text-secondary': settings.secondary_text_color,
       '--text-muted': settings.secondary_text_color,
       '--accent': settings.accent_color,
-      '--accent-dim': settings.accent_dim_color
+      '--accent-dim': settings.accent_dim_color,
+      '--surface-soft': settings.surface_color,
+      '--surface-strong': settings.background_color
     };
 
     Object.entries(colorMap).forEach(([property, value]) => {
       if (value) root.style.setProperty(property, value);
     });
+
+    const surfaceRgb = hexToRgb(settings.surface_color);
+    if (surfaceRgb) {
+      root.style.setProperty('--glass', `rgba(${surfaceRgb.r}, ${surfaceRgb.g}, ${surfaceRgb.b}, 0.78)`);
+    }
 
     const accentRgb = hexToRgb(settings.accent_color);
     if (accentRgb) {
@@ -126,7 +144,8 @@
     document.body.dataset.heroLayout = settings.hero_layout || 'classic';
 
     if (settings.background_image_url) {
-      document.body.style.backgroundImage = `linear-gradient(rgba(255,255,255,0.88), rgba(255,255,255,0.88)), url("${settings.background_image_url}")`;
+      const bgUrl = getCacheBustedUrl(settings.background_image_url, settings.updated_at);
+      document.body.style.backgroundImage = `linear-gradient(rgba(33,15,16,0.88), rgba(33,15,16,0.88)), url("${bgUrl}")`;
       document.body.style.backgroundAttachment = 'fixed';
       document.body.style.backgroundSize = 'cover';
       document.body.style.backgroundPosition = 'center';
@@ -215,7 +234,7 @@
       if (profile.avatar_url) {
         const profileImg = document.querySelector('.profile-image');
         if (profileImg) {
-          profileImg.src = profile.avatar_url;
+          profileImg.src = getCacheBustedUrl(profile.avatar_url, profile.updated_at);
           profileImg.alt = profile.name;
           profileImg.style.display = 'block';
           profileImg.innerHTML = '';
@@ -285,7 +304,13 @@
           .forEach(project => {
           const projectCard = document.createElement('div');
           projectCard.className = 'project-card reveal';
+          const thumbUrl = project.thumbnail_url ? getCacheBustedUrl(project.thumbnail_url, project.updated_at) : null;
           projectCard.innerHTML = `
+            ${thumbUrl ? `
+              <div class="project-thumbnail" style="margin-bottom: 1rem; border-radius: 8px; overflow: hidden; max-height: 180px;">
+                <img src="${escapeHTML(thumbUrl)}" alt="${escapeHTML(project.title)}" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+              </div>
+            ` : ''}
             <h3 class="project-card-name">${escapeHTML(project.title)}</h3>
             <p class="project-card-desc">${escapeHTML(project.description)}</p>
             ${project.tech_stack && project.tech_stack.length > 0 ? `
@@ -381,7 +406,7 @@
   async function loadExperience() {
     const experience = await fetchAPI('/experience/');
     if (experience && experience.length > 0) {
-      const expColumn = document.querySelector('.dual-timeline .timeline-column:last-child');
+      const expColumn = document.querySelector('.timeline-column-certifications') || document.querySelector('.dual-timeline .timeline-column:last-child');
       if (expColumn) {
         const existingCards = expColumn.querySelectorAll('.exp-card');
         existingCards.forEach(card => card.remove());
@@ -390,7 +415,13 @@
           const expCard = document.createElement('div');
           expCard.className = 'exp-card reveal';
           const endDate = exp.end_date || 'Present';
+          const logoUrl = exp.logo_url ? getCacheBustedUrl(exp.logo_url, exp.updated_at) : null;
           expCard.innerHTML = `
+            ${logoUrl ? `
+              <div class="company-logo-wrapper" style="margin-bottom: 0.5rem; max-width: 48px; max-height: 48px;">
+                <img src="${escapeHTML(logoUrl)}" alt="${escapeHTML(exp.company)}" style="max-width: 100%; height: auto;" />
+              </div>
+            ` : ''}
             <span class="exp-date">${escapeHTML(exp.start_date)} - ${escapeHTML(endDate)}</span>
             <h4 class="exp-company">${escapeHTML(exp.company)}</h4>
             <span class="exp-role">${escapeHTML(exp.role)}</span>
@@ -411,7 +442,7 @@
   async function loadEducation() {
     const education = await fetchAPI('/education/');
     if (education && education.length > 0) {
-      const eduColumn = document.querySelector('.dual-timeline .timeline-column:first-child');
+      const eduColumn = document.querySelector('.timeline-column-education') || document.querySelector('.dual-timeline .timeline-column:first-child');
       if (eduColumn) {
         const existingCards = eduColumn.querySelectorAll('.exp-card');
         existingCards.forEach(card => card.remove());
@@ -740,9 +771,83 @@
       });
 
       if (valid) {
-        document.getElementById('formSuccess').classList.add('show');
-        form.reset();
-        setTimeout(() => document.getElementById('formSuccess').classList.remove('show'), 3000);
+        const payload = {
+          name: document.getElementById('formName').value.trim(),
+          email: document.getElementById('formEmail').value.trim(),
+          subject: document.getElementById('formSubject').value.trim(),
+          message: document.getElementById('formMessage').value.trim()
+        };
+
+        const submitBtn = form.querySelector('.cc-submit-btn');
+        const origText = submitBtn ? submitBtn.textContent : 'Send Message';
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Sending...';
+        }
+
+        fetch(`${API_BASE_URL}/messages/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        })
+        .then(async response => {
+          const data = await response.json().catch(() => null);
+          if (!response.ok) {
+            if (response.status === 429) {
+              throw new Error('Too many message attempts. Please wait a few minutes before trying again.');
+            }
+            if (data && typeof data === 'object') {
+              const messages = [];
+              for (const [field, errs] of Object.entries(data)) {
+                const errText = Array.isArray(errs) ? errs.join(', ') : String(errs);
+                messages.push(`${field}: ${errText}`);
+              }
+              if (messages.length > 0) throw new Error(messages.join('\n'));
+            }
+            throw new Error('Failed to submit message. Please try again later.');
+          }
+          return data;
+        })
+        .then(() => {
+          const successDiv = document.getElementById('formSuccess');
+          if (successDiv) {
+            successDiv.textContent = "Message sent successfully! I'll get back to you soon.";
+            successDiv.style.background = '';
+            successDiv.style.borderColor = '';
+            successDiv.style.color = '';
+            successDiv.classList.add('show');
+            setTimeout(() => successDiv.classList.remove('show'), 5000);
+          }
+          form.reset();
+        })
+        .catch(error => {
+          console.error('Error submitting form:', error);
+          const errDiv = document.getElementById('formSuccess');
+          if (errDiv) {
+            errDiv.textContent = error.message || 'Failed to send message. Please try again later.';
+            errDiv.style.background = 'rgba(220, 53, 69, 0.15)';
+            errDiv.style.borderColor = 'rgba(220, 53, 69, 0.4)';
+            errDiv.style.color = '#ff6b6b';
+            errDiv.classList.add('show');
+            setTimeout(() => {
+              errDiv.classList.remove('show');
+              errDiv.style.background = '';
+              errDiv.style.borderColor = '';
+              errDiv.style.color = '';
+            }, 6000);
+          } else {
+            alert(error.message || 'Failed to send message.');
+          }
+        })
+        .finally(() => {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = origText;
+          }
+        });
+
       }
     });
 

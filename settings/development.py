@@ -18,5 +18,6 @@ DATABASES = {
 # CORS - Allow all origins in development
 CORS_ALLOW_ALL_ORIGINS = True
 
-# Email backend for development (console)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Email backend for development (defaults to console backend)
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+

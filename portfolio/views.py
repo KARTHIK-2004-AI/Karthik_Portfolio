@@ -1,21 +1,27 @@
 """
 Portfolio app views - DRF ViewSets for all models
 """
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from django.shortcuts import get_object_or_404
+from django.core.mail import send_mail
+from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .models import (
     Profile, Project, Skill, Experience,
-    Education, ContactInfo, SocialLink, SiteSettings, Section
+    Education, ContactInfo, SocialLink, SiteSettings, Section,
+    ContactMessage
 )
 from .serializers import (
     ProfileSerializer, ProjectSerializer, SkillSerializer,
     ExperienceSerializer, EducationSerializer, ContactInfoSerializer,
     SocialLinkSerializer, SiteSettingsSerializer, SectionSerializer,
-    ProjectReorderSerializer
+    ProjectReorderSerializer, ContactMessageSerializer
 )
 from .permissions import IsAdminOrReadOnly
 
@@ -32,12 +38,19 @@ class ProfileViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'put', 'patch']  # No POST or DELETE
     
     def list(self, request, *args, **kwargs):
-        """Return single profile object instead of list"""
+        """Return single profile object instead of list, creating default if missing"""
         profile = Profile.objects.first()
-        if profile:
-            serializer = self.get_serializer(profile)
-            return Response(serializer.data)
-        return Response({"detail": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
+        if not profile:
+            profile, _ = Profile.objects.get_or_create(
+                defaults={
+                    'name': 'Karthik Aarupalli',
+                    'tagline': 'AI Engineer & Full-Stack Developer',
+                    'about': 'AI Engineer specializing in intelligent automation, deep learning, and full-stack development.',
+                    'is_available': True
+                }
+            )
+        serializer = self.get_serializer(profile)
+        return Response(serializer.data)
     
     def retrieve(self, request, *args, **kwargs):
         """Retrieve profile by ID"""
@@ -115,12 +128,18 @@ class ContactInfoViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'put', 'patch']  # No POST or DELETE
     
     def list(self, request, *args, **kwargs):
-        """Return single contact info object instead of list"""
+        """Return single contact info object instead of list, creating default if missing"""
         contact = ContactInfo.objects.first()
-        if contact:
-            serializer = self.get_serializer(contact)
-            return Response(serializer.data)
-        return Response({"detail": "Contact info not found"}, status=status.HTTP_404_NOT_FOUND)
+        if not contact:
+            contact, _ = ContactInfo.objects.get_or_create(
+                defaults={
+                    'email': 'aaarupallikarthik@gmail.com',
+                    'phone': '+91-7799553213',
+                    'availability_note': 'Available for freelance & full-time opportunities'
+                }
+            )
+        serializer = self.get_serializer(contact)
+        return Response(serializer.data)
     
     def retrieve(self, request, *args, **kwargs):
         """Retrieve contact info by ID"""
@@ -171,3 +190,47 @@ class SectionViewSet(viewsets.ModelViewSet):
     queryset = Section.objects.all()
     serializer_class = SectionSerializer
     permission_classes = [IsAdminOrReadOnly]
+
+
+class ContactMessageViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for ContactMessage.
+    POST: Create a message (publicly accessible with throttling)
+    GET/DELETE: List, retrieve, and delete messages (admin only)
+    """
+    queryset = ContactMessage.objects.all()
+    serializer_class = ContactMessageSerializer
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [permissions.AllowAny()]
+        return [permissions.IsAdminUser()]
+
+    def perform_create(self, serializer):
+        """Save message to DB and send notification email to site owner"""
+        message_instance = serializer.save()
+
+        # Dispatch notification email
+        recipient = getattr(settings, 'NOTIFY_EMAIL', 'aaarupallikarthik@gmail.com')
+        subject = f"[Portfolio Contact] {message_instance.subject}"
+        body = (
+            f"You received a new message from your portfolio website:\n\n"
+            f"Name: {message_instance.name}\n"
+            f"Email: {message_instance.email}\n"
+            f"Subject: {message_instance.subject}\n\n"
+            f"Message:\n{message_instance.message}\n\n"
+            f"---\nReceived at: {message_instance.created_at}"
+        )
+
+        try:
+            send_mail(
+                subject=subject,
+                message=body,
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', None),
+                recipient_list=[recipient],
+                fail_silently=False,
+            )
+            logger.info(f"Notification email sent for contact message #{message_instance.id}")
+        except Exception as e:
+            logger.error(f"Failed to send contact notification email: {e}")
+

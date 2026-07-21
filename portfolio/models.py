@@ -291,3 +291,22 @@ class Section(models.Model):
 
     def __str__(self):
         return self.nav_label
+
+
+class ContactMessage(models.Model):
+    """Model to store contact form messages sent by visitors"""
+    name = models.CharField(max_length=150)
+    email = models.EmailField()
+    subject = models.CharField(max_length=200)
+    message = models.TextField()
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Contact Message"
+        verbose_name_plural = "Contact Messages"
+        
+    def __str__(self):
+        return f"Message from {self.name} - {self.subject}"
+

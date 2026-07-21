@@ -83,16 +83,7 @@ class GlowyWaves {
   }
 
   updateTheme() {
-    const isDark = document.body.dataset.theme === 'dark';
-    if (isDark) {
-      // Dark theme colors
-      this.bgTop = '#111111';
-      this.bgBottom = 'rgba(26, 26, 26, 0.95)';
-    } else {
-      // Light theme colors  
-      this.bgTop = '#FFFFFF';
-      this.bgBottom = 'rgba(245, 245, 247, 0.95)';
-    }
+    // Canvas background is transparent to let CSS theme background show through cleanly
   }
 
   resizeCanvas() {
@@ -162,13 +153,8 @@ class GlowyWaves {
     this.mouse.x += (this.targetMouse.x - this.mouse.x) * this.config.smoothing;
     this.mouse.y += (this.targetMouse.y - this.mouse.y) * this.config.smoothing;
 
-    // Gradient background
-    const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
-    gradient.addColorStop(0, this.bgTop);
-    gradient.addColorStop(1, this.bgBottom);
-
-    this.ctx.fillStyle = gradient;
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    // Clear background so underlying CSS theme gradient shows through cleanly
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     // Reset canvas state
     this.ctx.globalAlpha = 1;
