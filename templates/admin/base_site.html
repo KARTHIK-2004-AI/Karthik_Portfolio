@@ -525,6 +525,13 @@ fieldset .form-row label {
   width: 180px !important;
 }
 
+/* Wide change-list tables must scroll horizontally instead of breaking the layout */
+#changelist .results,
+#changelist-form .results {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 
 /* ── Help Text ─────────────────────────────────────────────── */
 .help,
@@ -984,6 +991,18 @@ img[src*="icon-no"] {
 
 
 /* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  /* Change-list tables scroll horizontally rather than overflow the page */
+  #result_list {
+    min-width: 560px;
+  }
+  #changelist .results,
+  #changelist-form .results {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 @media (max-width: 767px) {
   #header {
     padding: 10px 16px !important;
@@ -1002,6 +1021,34 @@ img[src*="icon-no"] {
   .submit-row {
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  /* Stack form labels above inputs instead of a fixed 180px column */
+  .aligned label {
+    width: auto !important;
+    float: none !important;
+    display: block !important;
+    margin-bottom: 6px !important;
+  }
+
+  .aligned .form-row > div,
+  .aligned .form-row input,
+  .aligned .form-row select,
+  .aligned .form-row textarea {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  body.login #container {
+    min-width: 0 !important;
+    width: 100%;
+    max-width: 420px;
+    margin: 32px auto !important;
+    padding: 0 12px;
+  }
+
+  body.login #content {
+    padding: 24px !important;
   }
   
   #result_list thead th,

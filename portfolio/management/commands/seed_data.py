@@ -118,6 +118,29 @@ class Command(BaseCommand):
                     'Python', 'Google Gemini API', 'Ollama', 'Selenium',
                     'OpenCV', 'MongoDB', 'SQLite', 'PyAutoGUI', 'tkinter'
                 ],
+                'journey': (
+                    'U.L.T.R.O.N began as a small voice-command script that could open a '
+                    'handful of apps. As the idea grew, so did the scope: it became a modular '
+                    'assistant of 18 tested modules that listens, reads the screen, browses the '
+                    'web, and remembers how I like to work.\n\n'
+                    'The biggest shift was treating it as a product rather than a demo — every '
+                    'module was tested on its own, then wired into the whole.'
+                ),
+                'challenges': (
+                    'Staying useful without an internet connection was the hard part. Cloud models '
+                    'were accurate but slow and expensive, while local models were fast but weaker.\n\n'
+                    'Ambiguous commands ("open that file") also broke early versions. Both problems '
+                    'were solved with a switching layer that picks the right engine per request and '
+                    'falls back gracefully when a provider is unavailable.'
+                ),
+                'architecture': (
+                    'Two AI engines sit behind a single router: a local Ollama model for offline, '
+                    'latency-sensitive tasks, and Google Gemini for heavier reasoning. The router '
+                    'chooses per request, which cut API costs by about 80%.\n\n'
+                    'A wake-word listener feeds commands into the core, PyAutoGUI and Selenium drive '
+                    'the desktop and browser, and a persistent memory layer in SQLite/MongoDB learns '
+                    'habits and preferences over time.'
+                ),
                 'is_featured': True,
                 'order': 0,
             },
@@ -130,6 +153,23 @@ class Command(BaseCommand):
                     "via Flask for face registration, locking, and unlocking."
                 ),
                 'tech_stack': ['Python', 'OpenCV', 'Flask', 'CNNs'],
+                'journey': (
+                    'The goal was privacy with zero friction: no passwords to remember, just your '
+                    'face. It started as a script that locked a single folder and grew into a small '
+                    'web app where you register your face, lock files, and unlock them from a browser.'
+                ),
+                'challenges': (
+                    'Face authentication is unforgiving — different lighting, angles, and cameras '
+                    'easily produce false matches or false rejections.\n\n'
+                    'Iterating on the CNN pipeline, preprocessing, and a verification threshold '
+                    'brought authentication to a reliable level across varied lighting conditions.'
+                ),
+                'architecture': (
+                    'A webcam feed is passed through a CNN for real-time face detection and '
+                    'verification. Only a verified match unlocks the protected files.\n\n'
+                    'A lightweight Flask app handles the workflow: registering a face, locking '
+                    'files, and unlocking them through the browser.'
+                ),
                 'is_featured': False,
                 'order': 1,
             },

@@ -160,6 +160,13 @@ class ProjectAdmin(admin.ModelAdmin):
         ('Project Information', {
             'fields': ('title', 'description', 'tech_stack')
         }),
+        ('Know More — Project Detail', {
+            'fields': ('journey', 'challenges', 'architecture'),
+            'description': (
+                'Shown in the "Know More" panel on the portfolio site. '
+                'Use blank lines to separate paragraphs.'
+            ),
+        }),
         ('Links', {
             'fields': ('live_url', 'repo_url')
         }),
@@ -297,6 +304,7 @@ class SocialLinkAdmin(admin.ModelAdmin):
 class SiteSettingsAdmin(admin.ModelAdmin):
     """Admin for Site Settings"""
     list_display = ['site_title', 'theme', 'draft_mode', 'updated_at']
+    readonly_fields = ['created_at', 'updated_at']
     
     fieldsets = (
         ('General', {
@@ -322,6 +330,10 @@ class SiteSettingsAdmin(admin.ModelAdmin):
         }),
         ('Advanced', {
             'fields': ('custom_css',),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )
@@ -359,8 +371,9 @@ class SectionAdmin(admin.ModelAdmin):
         return False
     
     def has_delete_permission(self, request, obj=None):
-        """Prevent deleting sections"""
-        return obj.key != 'home' if obj else False
+        """Prevent deleting sections - a deleted section cannot be re-added
+        from the admin, which risks silent data loss."""
+        return False
 
 
 # Customize admin site header and title

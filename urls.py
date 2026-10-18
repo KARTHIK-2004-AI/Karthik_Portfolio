@@ -18,7 +18,9 @@ def portfolio_home(request):
     index_path = settings.BASE_DIR / 'index.html'
     if not index_path.exists():
         raise Http404("Portfolio frontend not found")
-    return FileResponse(index_path.open('rb'), content_type='text/html')
+    response = FileResponse(index_path.open('rb'), content_type='text/html')
+    response['Cache-Control'] = 'no-cache, must-revalidate'
+    return response
 
 
 urlpatterns = [
@@ -36,15 +38,10 @@ urlpatterns = [
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
 
-from django.views.static import serve
-from django.urls import re_path
-
-# Serve media and static files in development
+# Serve media/static files in development only.
+# In production these must be served by the web server / object storage
+# (e.g. PythonAnywhere maps MEDIA_ROOT, or WhiteNoise handles /static/).
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += staticfiles_urlpatterns()
-else:
-    urlpatterns += [
-        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
-    ]
 

@@ -5,10 +5,12 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.throttling import ScopedRateThrottle
 from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 from django.conf import settings
 import logging
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -50,12 +52,6 @@ class ProfileViewSet(viewsets.ModelViewSet):
                 }
             )
         serializer = self.get_serializer(profile)
-        return Response(serializer.data)
-    
-    def retrieve(self, request, *args, **kwargs):
-        """Retrieve profile by ID"""
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
 
@@ -140,12 +136,6 @@ class ContactInfoViewSet(viewsets.ModelViewSet):
             )
         serializer = self.get_serializer(contact)
         return Response(serializer.data)
-    
-    def retrieve(self, request, *args, **kwargs):
-        """Retrieve contact info by ID"""
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
 
 
 class SocialLinkViewSet(viewsets.ModelViewSet):
@@ -171,14 +161,8 @@ class SiteSettingsViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         """Return single settings object instead of list"""
-        settings, _ = SiteSettings.objects.get_or_create()
-        serializer = self.get_serializer(settings)
-        return Response(serializer.data)
-
-    def retrieve(self, request, *args, **kwargs):
-        """Retrieve settings by ID"""
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
+        site_settings, _ = SiteSettings.objects.get_or_create()
+        serializer = self.get_serializer(site_settings)
         return Response(serializer.data)
 
 
@@ -186,10 +170,39 @@ class SectionViewSet(viewsets.ModelViewSet):
     """
     ViewSet for top-level portfolio sections.
     Admins can update labels, visibility, headings, and ordering.
+    Sections cannot be created or deleted through the API — this mirrors
+    the Django admin guard so the two never disagree.
     """
     queryset = Section.objects.all()
     serializer_class = SectionSerializer
     permission_classes = [IsAdminOrReadOnly]
+    http_method_names = ['get', 'head', 'options', 'put', 'patch']
+
+
+def _send_contact_notification(message_instance):
+    """Send the contact notification email out-of-band so SMTP latency
+    never blocks the visitor's HTTP request."""
+    recipient = getattr(settings, 'NOTIFY_EMAIL', 'aaarupallikarthik@gmail.com')
+    subject = f"[Portfolio Contact] {message_instance.subject}"
+    body = (
+        f"You received a new message from your portfolio website:\n\n"
+        f"Name: {message_instance.name}\n"
+        f"Email: {message_instance.email}\n"
+        f"Subject: {message_instance.subject}\n\n"
+        f"Message:\n{message_instance.message}\n\n"
+        f"---\nReceived at: {message_instance.created_at}"
+    )
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', None),
+            recipient_list=[recipient],
+            fail_silently=True,
+        )
+        logger.info(f"Notification email sent for contact message #{message_instance.id}")
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.error(f"Failed to send contact notification email: {exc}")
 
 
 class ContactMessageViewSet(viewsets.ModelViewSet):
@@ -200,6 +213,14 @@ class ContactMessageViewSet(viewsets.ModelViewSet):
     """
     queryset = ContactMessage.objects.all()
     serializer_class = ContactMessageSerializer
+    throttle_scope = 'contact'
+
+    def get_throttles(self):
+        """Apply the dedicated 'contact' rate only to public message creation;
+        admin listing/retrieval keeps the default throttles."""
+        if self.action == 'create':
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
 
     def get_permissions(self):
         if self.action == 'create':
@@ -207,30 +228,11 @@ class ContactMessageViewSet(viewsets.ModelViewSet):
         return [permissions.IsAdminUser()]
 
     def perform_create(self, serializer):
-        """Save message to DB and send notification email to site owner"""
+        """Save the message immediately, then notify the owner in the background."""
         message_instance = serializer.save()
-
-        # Dispatch notification email
-        recipient = getattr(settings, 'NOTIFY_EMAIL', 'aaarupallikarthik@gmail.com')
-        subject = f"[Portfolio Contact] {message_instance.subject}"
-        body = (
-            f"You received a new message from your portfolio website:\n\n"
-            f"Name: {message_instance.name}\n"
-            f"Email: {message_instance.email}\n"
-            f"Subject: {message_instance.subject}\n\n"
-            f"Message:\n{message_instance.message}\n\n"
-            f"---\nReceived at: {message_instance.created_at}"
-        )
-
-        try:
-            send_mail(
-                subject=subject,
-                message=body,
-                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', None),
-                recipient_list=[recipient],
-                fail_silently=False,
-            )
-            logger.info(f"Notification email sent for contact message #{message_instance.id}")
-        except Exception as e:
-            logger.error(f"Failed to send contact notification email: {e}")
+        threading.Thread(
+            target=_send_contact_notification,
+            args=(message_instance,),
+            daemon=True,
+        ).start()
 

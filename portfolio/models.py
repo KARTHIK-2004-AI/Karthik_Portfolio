@@ -43,6 +43,18 @@ class Project(models.Model):
     live_url = models.URLField(blank=True, null=True)
     repo_url = models.URLField(blank=True, null=True)
     thumbnail = models.ImageField(upload_to='images/projects/', blank=True, null=True)
+    journey = models.TextField(
+        blank=True,
+        help_text="The story of the project: how it started, how it evolved, key milestones."
+    )
+    challenges = models.TextField(
+        blank=True,
+        help_text="Problems you ran into and how you solved them."
+    )
+    architecture = models.TextField(
+        blank=True,
+        help_text="How it is built: components, data flow, and the technical decisions behind it."
+    )
     is_featured = models.BooleanField(default=False)
     order = models.IntegerField(default=0, help_text="Display order (lower = first)")
     

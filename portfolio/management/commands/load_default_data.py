@@ -41,6 +41,15 @@ class Command(BaseCommand):
                 'title': 'U.L.T.R.O.N — AI-Powered Personal Assistant System',
                 'description': '''Built a desktop AI assistant controlled by voice, text, or screen analysis — capable of opening apps, managing files, searching the web, and controlling the mouse without an internet connection. Combined two AI engines (local Ollama + Google Gemini) with automatic switching, cutting API costs by up to 80% while keeping responses fast for everyday tasks. Added screen reading, browser automation via Selenium, and a persistent memory system (SQLite/MongoDB) that learns the user's habits and preferences over time. Delivered 18 tested modules with zero failures, a wake-word listener ("Wake up Ultron"), and a dark-themed dashboard.''',
                 'tech_stack': ['Python', 'Google Gemini API', 'Ollama', 'Selenium', 'OpenCV', 'MongoDB', 'SQLite', 'PyAutoGUI', 'tkinter'],
+                'journey': '''Started as a small voice-command script and grew into a modular assistant of 18 tested modules that listens, reads the screen, browses the web, and remembers how I like to work.
+
+The biggest shift was treating it as a product rather than a demo — every module tested on its own, then wired into the whole.''',
+                'challenges': '''Staying useful without an internet connection was the hard part: cloud models were accurate but slow and expensive, local ones fast but weaker.
+
+Ambiguous commands also broke early versions. A switching layer that picks the right engine per request — and falls back when a provider is unavailable — solved both.''',
+                'architecture': '''Two AI engines behind a single router: a local Ollama model for offline, latency-sensitive tasks and Google Gemini for heavier reasoning. The router chooses per request, cutting API costs by about 80%.
+
+A wake-word listener feeds the core; PyAutoGUI and Selenium drive the desktop and browser; a persistent memory layer (SQLite/MongoDB) learns habits over time.''',
                 'is_featured': True,
                 'order': 0
             },
@@ -48,6 +57,13 @@ class Command(BaseCommand):
                 'title': 'Facial Recognition File Lock System',
                 'description': '''Built a file security system that uses a person's face as the password — files are locked and can only be accessed by the authorised user, with no traditional password required. Trained a deep learning model (CNN) to accurately detect and verify faces in real time, achieving reliable authentication even in different lighting conditions. Created a simple web interface using Flask where users can register their face, lock files, and unlock them through a browser.''',
                 'tech_stack': ['Python', 'OpenCV', 'Flask', 'CNNs'],
+                'journey': '''The goal was privacy with zero friction: no passwords to remember, just your face. It began as a script locking one folder and grew into a small web app to register a face, lock files, and unlock them from a browser.''',
+                'challenges': '''Face authentication is unforgiving — lighting, angles, and camera differences cause false matches or rejections.
+
+Iterating on preprocessing, the CNN pipeline, and a verification threshold brought it to a reliable level across varied lighting.''',
+                'architecture': '''A webcam feed passes through a CNN for real-time detection and verification; only a verified match unlocks the protected files.
+
+A lightweight Flask app handles registration, locking, and unlocking through the browser.''',
                 'is_featured': False,
                 'order': 1
             }
@@ -61,41 +77,31 @@ class Command(BaseCommand):
         # 4. Create Skills
         skills_data = [
             # Languages
-            {'name': 'Python', 'category': 'frontend', 'proficiency': 5},
-            {'name': 'Java', 'category': 'frontend', 'proficiency': 4},
-            {'name': 'SQL', 'category': 'frontend', 'proficiency': 4},
-            
+            {'name': 'Python', 'category': 'languages', 'proficiency': 5},
+            {'name': 'Java', 'category': 'languages', 'proficiency': 3},
+            {'name': 'SQL', 'category': 'languages', 'proficiency': 5},
+            {'name': 'HTML / CSS / JS', 'category': 'languages', 'proficiency': 3},
+
             # AI/ML
-            {'name': 'Machine Learning', 'category': 'backend', 'proficiency': 5},
-            {'name': 'Deep Learning', 'category': 'backend', 'proficiency': 5},
-            {'name': 'CNNs', 'category': 'backend', 'proficiency': 5},
-            {'name': 'Large Language Models (LLMs)', 'category': 'backend', 'proficiency': 5},
-            {'name': 'Agentic AI', 'category': 'backend', 'proficiency': 5},
-            {'name': 'Computer Vision', 'category': 'backend', 'proficiency': 5},
-            
+            {'name': 'Machine Learning', 'category': 'ai_ml', 'proficiency': 5},
+            {'name': 'Deep Learning / CNNs', 'category': 'ai_ml', 'proficiency': 5},
+            {'name': 'LLMs / Agentic AI', 'category': 'ai_ml', 'proficiency': 5},
+            {'name': 'Computer Vision', 'category': 'ai_ml', 'proficiency': 5},
+            {'name': 'Speech Recognition', 'category': 'ai_ml', 'proficiency': 3},
+
             # Libraries & Frameworks
-            {'name': 'Flask', 'category': 'tools', 'proficiency': 5},
-            {'name': 'OpenCV', 'category': 'tools', 'proficiency': 5},
-            {'name': 'Pandas', 'category': 'tools', 'proficiency': 5},
-            {'name': 'Selenium', 'category': 'tools', 'proficiency': 5},
-            {'name': 'PyAutoGUI', 'category': 'tools', 'proficiency': 5},
-            {'name': 'SpeechRecognition', 'category': 'tools', 'proficiency': 5},
-            
+            {'name': 'Flask', 'category': 'libraries', 'proficiency': 5},
+            {'name': 'OpenCV', 'category': 'libraries', 'proficiency': 5},
+            {'name': 'Pandas', 'category': 'libraries', 'proficiency': 3},
+            {'name': 'Selenium', 'category': 'libraries', 'proficiency': 5},
+            {'name': 'PyAutoGUI', 'category': 'libraries', 'proficiency': 3},
+
             # Databases & Tools
-            {'name': 'MongoDB', 'category': 'other', 'proficiency': 5},
-            {'name': 'SQLite', 'category': 'other', 'proficiency': 5},
-            {'name': 'MySQL', 'category': 'other', 'proficiency': 5},
-            {'name': 'Git', 'category': 'other', 'proficiency': 5},
-            {'name': 'GitHub', 'category': 'other', 'proficiency': 5},
-            {'name': 'VS Code', 'category': 'other', 'proficiency': 5},
-            {'name': 'Anaconda', 'category': 'other', 'proficiency': 5},
-            {'name': 'Google Colab', 'category': 'other', 'proficiency': 5},
-            
-            # Soft Skills
-            {'name': 'Problem Solving', 'category': 'other', 'proficiency': 5},
-            {'name': 'Communication', 'category': 'other', 'proficiency': 5},
-            {'name': 'Adaptability', 'category': 'other', 'proficiency': 5},
-            {'name': 'Event Management', 'category': 'other', 'proficiency': 5},
+            {'name': 'MongoDB', 'category': 'tools', 'proficiency': 5},
+            {'name': 'SQLite / MySQL', 'category': 'tools', 'proficiency': 5},
+            {'name': 'Git / GitHub', 'category': 'tools', 'proficiency': 5},
+            {'name': 'VS Code / Colab', 'category': 'tools', 'proficiency': 5},
+            {'name': 'Anaconda', 'category': 'tools', 'proficiency': 3},
         ]
 
         for skill_data in skills_data:
@@ -170,5 +176,9 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('='*60))
         self.stdout.write(self.style.SUCCESS('\nYou can now:'))
         self.stdout.write(self.style.SUCCESS('1. Visit http://127.0.0.1:8000/admin to edit your data'))
-        self.stdout.write(self.style.SUCCESS('2. Visit http://127.0.0.1:8080 to see your portfolio'))
+        self.stdout.write(self.style.SUCCESS('2. Visit http://127.0.0.1:8000 to see your portfolio'))
         self.stdout.write(self.style.SUCCESS('\nNote: Update GitHub and LinkedIn URLs in Social Links!'))
+        self.stdout.write(self.style.WARNING(
+            'Tip: prefer "python manage.py seed_data" for a full, consistent seed '
+            '(it also creates Site Settings and Sections).'
+        ))

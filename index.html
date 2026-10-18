@@ -18,7 +18,7 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&family=Lora:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
 
   <!-- Stylesheet -->
   <link rel="stylesheet" href="/static/css/style.css">
@@ -36,7 +36,7 @@
   </script>
 </head>
 
-<body>
+<body data-theme="light">
   <!-- Custom Cursor -->
   <div class="cursor-dot" aria-hidden="true"></div>
   <div class="cursor-ring" aria-hidden="true"></div>
@@ -116,7 +116,7 @@
             </div>
             <p class="hero-tagline" data-animate="4">I build systems that think.</p>
             <div class="hero-ctas" data-animate="5">
-              <a href="#" class="btn btn-primary" id="resumeBtn">Download Résumé</a>
+              <a href="#" class="btn btn-primary" id="resumeBtn" hidden>Download Résumé</a>
               <a href="#projects" class="btn btn-secondary">View My Work</a>
             </div>
             
@@ -189,7 +189,7 @@
           </div>
           <div class="about-visual reveal">
             <div class="profile-frame">
-              <img src="" alt="Karthik Aarupalli" class="profile-image" onerror="this.style.display='none'; this.parentElement.classList.add('profile-fallback');">
+              <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Karthik Aarupalli" class="profile-image" onerror="this.style.display='none'; this.parentElement.classList.add('profile-fallback');">
             </div>
           </div>
         </div>
@@ -501,25 +501,25 @@
                 <div class="cc-form-group">
                   <label for="formName" class="cc-label">Name</label>
                   <input type="text" id="formName" name="name" class="cc-input" placeholder="Your name" required autocomplete="name">
-                  <span class="form-error" id="nameError"></span>
+                  <span class="form-error" id="nameError" role="alert" aria-live="polite"></span>
                 </div>
                 <div class="cc-form-group">
                   <label for="formEmail" class="cc-label">Email</label>
                   <input type="email" id="formEmail" name="email" class="cc-input" placeholder="you@example.com" required autocomplete="email">
-                  <span class="form-error" id="emailError"></span>
+                  <span class="form-error" id="emailError" role="alert" aria-live="polite"></span>
                 </div>
                 <div class="cc-form-group">
                   <label for="formSubject" class="cc-label">Subject</label>
                   <input type="text" id="formSubject" name="subject" class="cc-input" placeholder="What's this about?" required>
-                  <span class="form-error" id="subjectError"></span>
+                  <span class="form-error" id="subjectError" role="alert" aria-live="polite"></span>
                 </div>
                 <div class="cc-form-group">
                   <label for="formMessage" class="cc-label">Message</label>
                   <textarea id="formMessage" name="message" class="cc-textarea" placeholder="Tell me about your project..." rows="4" required></textarea>
-                  <span class="form-error" id="messageError"></span>
+                  <span class="form-error" id="messageError" role="alert" aria-live="polite"></span>
                 </div>
                 <button type="submit" class="cc-submit-btn">Send Message</button>
-                <div class="form-success" id="formSuccess">Message sent successfully! I'll get back to you soon.</div>
+                <div class="form-success" id="formSuccess" role="status" aria-live="polite">Message sent successfully! I'll get back to you soon.</div>
               </form>
             </div>
           </div>
@@ -537,6 +537,17 @@
       <p class="footer-text">© 2026 Karthik Aarupalli. Crafted with precision.</p>
     </div>
   </footer>
+
+  <!-- Project "Know More" modal -->
+  <div class="project-modal" id="projectModal" role="dialog" aria-modal="true"
+       aria-labelledby="projectModalTitle" aria-hidden="true" hidden>
+    <div class="project-modal-backdrop" data-project-modal-close></div>
+    <div class="project-modal-panel" role="document">
+      <button type="button" class="project-modal-close" id="projectModalClose"
+              aria-label="Close project details">&times;</button>
+      <div class="project-modal-body" id="projectModalBody"></div>
+    </div>
+  </div>
 
   <!-- JavaScript -->
   <script src="/static/js/waves.js"></script>

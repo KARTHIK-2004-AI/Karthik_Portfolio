@@ -10,8 +10,7 @@
      ======================================================== */
   (function initThemeEarly() {
     const stored = localStorage.getItem('portfolio-theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const theme = stored || (prefersDark ? 'dark' : 'light');
+    const theme = stored || 'light';
     document.body.setAttribute('data-theme', theme);
   })();
 
@@ -20,7 +19,7 @@
     if (!btn) return;
 
     btn.addEventListener('click', () => {
-      const current = document.body.getAttribute('data-theme') || 'light';
+      const current = document.body.getAttribute('data-theme') || 'dark';
       const next = current === 'dark' ? 'light' : 'dark';
       document.body.setAttribute('data-theme', next);
       localStorage.setItem('portfolio-theme', next);
@@ -39,6 +38,7 @@
   const cmsPreviewMode = new URLSearchParams(window.location.search).has('preview');
   let cmsDraftMode = false;
   let cmsSiteTitle = 'Karthik Aarupalli';
+  let projectsCache = [];
 
   function shouldApplyCmsControls() {
     return !cmsDraftMode || cmsPreviewMode;
@@ -82,6 +82,29 @@
     return `${url}${separator}t=${t}`;
   }
 
+  let apiErrorShown = false;
+  function showApiError() {
+    if (apiErrorShown) return;
+    apiErrorShown = true;
+    let banner = document.getElementById('apiErrorBanner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'apiErrorBanner';
+      banner.className = 'api-error-banner';
+      banner.setAttribute('role', 'status');
+      banner.textContent = 'Live content is temporarily unavailable — showing the latest saved version.';
+      document.body.appendChild(banner);
+    }
+    requestAnimationFrame(() => banner.classList.add('show'));
+    setTimeout(() => banner.classList.remove('show'), 6000);
+  }
+
+  function clearApiError() {
+    apiErrorShown = false;
+    const banner = document.getElementById('apiErrorBanner');
+    if (banner) banner.classList.remove('show');
+  }
+
   async function fetchAPI(endpoint) {
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`);
@@ -93,8 +116,26 @@
       return data;
     } catch (error) {
       console.error(`Error fetching ${endpoint}:`, error);
+      showApiError();
       return null;
     }
+  }
+
+  function updateStats(projects, skills) {
+    const items = document.querySelectorAll('.stats-grid .stat-item');
+    if (items[0] && Array.isArray(projects) && projects.length) {
+      items[0].innerHTML =
+        `<span class="stat-number" data-target="${projects.length}">0</span>` +
+        '<span class="stat-suffix">+</span>' +
+        '<span class="stat-label">Projects Built</span>';
+    }
+    if (items[2] && Array.isArray(skills) && skills.length) {
+      items[2].innerHTML =
+        `<span class="stat-number" data-target="${skills.length}">0</span>` +
+        '<span class="stat-suffix">+</span>' +
+        '<span class="stat-label">Technologies</span>';
+    }
+    if (typeof animateCounters === 'function') animateCounters();
   }
 
   async function loadSiteSettings() {
@@ -138,7 +179,7 @@
     // Apply theme: respect user's local toggle over API setting
     const localTheme = localStorage.getItem('portfolio-theme');
     if (!localTheme) {
-      document.body.dataset.theme = settings.theme || 'light';
+      document.body.dataset.theme = settings.theme || 'dark';
     }
     document.body.dataset.fontStyle = settings.font_style || 'classic';
     document.body.dataset.heroLayout = settings.hero_layout || 'classic';
@@ -196,7 +237,7 @@
         sectionLabel.textContent = section.section_label;
       }
 
-      const heading = page.querySelector('.section-heading, .contact-heading');
+      const heading = page.querySelector('.section-heading, .contact-heading, .cc-title');
       if (heading && section.heading) {
         heading.innerHTML = htmlWithBreaks(section.heading);
       }
@@ -231,26 +272,32 @@
       }
 
       // Update profile image
+      const profileImg = document.querySelector('.profile-image');
       if (profile.avatar_url) {
-        const profileImg = document.querySelector('.profile-image');
         if (profileImg) {
           profileImg.src = getCacheBustedUrl(profile.avatar_url, profile.updated_at);
           profileImg.alt = profile.name;
           profileImg.style.display = 'block';
-          profileImg.innerHTML = '';
           if (profileImg.parentElement) {
             profileImg.parentElement.classList.remove('profile-fallback');
           }
         }
+      } else if (profileImg && profileImg.parentElement) {
+        profileImg.style.display = 'none';
+        profileImg.parentElement.classList.add('profile-fallback');
       }
 
-      // Update resume button
-      if (profile.resume_file_url) {
-        const resumeBtn = document.getElementById('resumeBtn');
-        if (resumeBtn) resumeBtn.href = profile.resume_file_url;
-      } else if (profile.resume_url) {
-        const resumeBtn = document.getElementById('resumeBtn');
-        if (resumeBtn) resumeBtn.href = profile.resume_url;
+      // Update resume button — only reveal it when a resume actually exists
+      const resumeBtn = document.getElementById('resumeBtn');
+      if (resumeBtn) {
+        const resumeHref = profile.resume_file_url || profile.resume_url;
+        if (resumeHref) {
+          resumeBtn.href = resumeHref;
+          resumeBtn.hidden = false;
+          resumeBtn.removeAttribute('aria-disabled');
+        } else {
+          resumeBtn.hidden = true;
+        }
       }
 
       // Update availability
@@ -266,6 +313,7 @@
   async function loadProjects() {
     const projects = await fetchAPI('/projects/');
     if (projects && projects.length > 0) {
+      projectsCache = projects;
       const featured = projects.find(project => project.is_featured) || projects[0];
       const featuredProject = document.querySelector('.featured-project');
       if (featuredProject && featured) {
@@ -282,6 +330,8 @@
             .join('');
         }
         if (links) {
+          const statusNode = links.querySelector('.project-link-text');
+          const statusLabel = statusNode ? statusNode.textContent.trim() : 'Featured Project';
           links.innerHTML = `
             ${featured.repo_url ? `
               <a href="${escapeHTML(featured.repo_url)}" class="project-link" aria-label="GitHub" target="_blank" rel="noopener">
@@ -289,8 +339,9 @@
               </a>
             ` : ''}
             ${featured.live_url ? `
-              <a href="${escapeHTML(featured.live_url)}" class="project-link-text" target="_blank" rel="noopener">View Live -></a>
-            ` : '<span class="project-link-text">Featured Project</span>'}
+              <a href="${escapeHTML(featured.live_url)}" class="project-link-text" target="_blank" rel="noopener">View Live &rarr;</a>
+            ` : `<span class="project-link-text">${escapeHTML(statusLabel)}</span>`}
+            ${knowMoreButton(featured)}
           `;
         }
       }
@@ -325,8 +376,9 @@
                 </a>
               ` : ''}
               ${project.live_url ? `
-                <a href="${escapeHTML(project.live_url)}" class="project-link-text" target="_blank" rel="noopener">View Live -></a>
+                <a href="${escapeHTML(project.live_url)}" class="project-link-text" target="_blank" rel="noopener">View Live &rarr;</a>
               ` : ''}
+              ${knowMoreButton(project)}
             </div>
           `;
           projectsGrid.appendChild(projectCard);
@@ -335,6 +387,7 @@
         observeReveals(projectsGrid);
       }
     }
+    return projects;
   }
 
   async function loadSkills() {
@@ -401,6 +454,7 @@
         observeReveals(skillsGrid);
       }
     }
+    return skills;
   }
 
   async function loadExperience() {
@@ -466,30 +520,33 @@
 
   async function loadContact() {
     const contact = await fetchAPI('/contact/');
-    if (contact) {
-      const contactCards = document.querySelectorAll('.contact-card');
-      if (contactCards.length >= 2) {
-        if (contact.email) {
-          contactCards[0].href = `mailto:${contact.email}`;
-          contactCards[0].querySelector('.contact-card-value').textContent = contact.email;
-        }
-        if (contact.phone) {
-          contactCards[1].href = `tel:${contact.phone}`;
-          contactCards[1].querySelector('.contact-card-value').textContent = contact.phone;
-        }
-      }
+    if (!contact) return;
 
-      if (contact.availability_note) {
-        const subtext = document.querySelector('.contact-subtext');
-        if (subtext) subtext.textContent = contact.availability_note;
+    document.querySelectorAll('.cc-contact-item').forEach((item) => {
+      const label = item.querySelector('.cc-item-label');
+      const value = item.querySelector('.cc-item-value');
+      if (!label || !value) return;
+
+      const labelText = label.textContent.trim().toLowerCase();
+      if (labelText === 'email' && contact.email) {
+        item.setAttribute('href', `mailto:${contact.email}`);
+        value.textContent = contact.email;
+      } else if (labelText === 'phone' && contact.phone) {
+        item.setAttribute('href', `tel:${contact.phone}`);
+        value.textContent = contact.phone;
       }
+    });
+
+    if (contact.availability_note) {
+      const subtext = document.querySelector('.contact-subtext');
+      if (subtext) subtext.textContent = contact.availability_note;
     }
   }
 
   async function loadSocials() {
     const socials = await fetchAPI('/socials/');
     if (socials && socials.length > 0) {
-      const socialRow = document.querySelector('.social-row');
+      const socialRow = document.querySelector('.cc-social-row');
       if (socialRow) {
         socialRow.innerHTML = '';
         
@@ -507,11 +564,13 @@
           };
           
           const iconPath = iconMap[social.platform] || 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z';
-          
+
+          const iconMarkup = social.icon_url
+            ? `<img src="${escapeHTML(social.icon_url)}" alt="${escapeHTML(social.platform_display || social.platform)}" width="18" height="18" />`
+            : `<svg viewBox="0 0 24 24" fill="currentColor"><path d="${iconPath}"/></svg>`;
+
           socialLink.innerHTML = `
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="${iconPath}"/>
-            </svg>
+            ${iconMarkup}
             <span class="social-link-label">${escapeHTML(social.platform_display || social.platform)}</span>
           `;
           socialRow.appendChild(socialLink);
@@ -526,15 +585,171 @@
   async function loadAllData() {
     await loadSiteSettings();
     await loadSections();
-    await Promise.all([
-      loadProfileData(),
+    const [projects, skills] = await Promise.all([
+      loadProfileData().then(() => null),
       loadProjects(),
       loadSkills(),
       loadExperience(),
       loadEducation(),
       loadContact(),
       loadSocials()
-    ]);
+    ]).then(results => [results[1], results[2]]);
+    if (projects || skills) clearApiError();
+    updateStats(projects, skills);
+  }
+
+  /* ========================================================
+     PROJECT "KNOW MORE" MODAL
+     ======================================================== */
+  const MODAL_SECTIONS = [
+    { key: 'journey', title: 'The Journey' },
+    { key: 'challenges', title: 'Challenges & Issues' },
+    { key: 'architecture', title: 'Architecture & How It Works' },
+  ];
+
+  let modalLastFocused = null;
+
+  function knowMoreButton(project) {
+    return `<button type="button" class="project-knowmore-btn" `
+      + `data-project-modal="${project.id}" aria-haspopup="dialog">`
+      + `Know More <span aria-hidden="true">&rarr;</span></button>`;
+  }
+
+  function renderProse(value) {
+    return String(value ?? '')
+      .split(/\n\s*\n/)
+      .map(part => part.trim())
+      .filter(Boolean)
+      .map(part => `<p>${htmlWithBreaks(part)}</p>`)
+      .join('');
+  }
+
+  function buildProjectModalHTML(project) {
+    const thumbUrl = project.thumbnail_url
+      ? getCacheBustedUrl(project.thumbnail_url, project.updated_at)
+      : null;
+
+    const tech = (project.tech_stack || [])
+      .map(name => `<span class="tech-tag">${escapeHTML(name)}</span>`)
+      .join('');
+
+    const sections = MODAL_SECTIONS
+      .filter(section => String(project[section.key] || '').trim())
+      .map(section => `
+        <section class="project-modal-section">
+          <h4>${section.title}</h4>
+          ${renderProse(project[section.key])}
+        </section>
+      `)
+      .join('');
+
+    const links = [
+      project.repo_url
+        ? `<a href="${escapeHTML(project.repo_url)}" class="project-link-text" target="_blank" rel="noopener">Source Code &rarr;</a>`
+        : '',
+      project.live_url
+        ? `<a href="${escapeHTML(project.live_url)}" class="project-link-text" target="_blank" rel="noopener">View Live &rarr;</a>`
+        : '',
+    ].filter(Boolean).join('');
+
+    return `
+      ${project.is_featured ? '<span class="project-modal-label">Featured Project</span>' : ''}
+      <h3 class="project-modal-title" id="projectModalTitle">${escapeHTML(project.title)}</h3>
+      ${project.description ? `<p class="project-modal-lead">${htmlWithBreaks(project.description)}</p>` : ''}
+      ${thumbUrl ? `
+        <div class="project-modal-thumb">
+          <img src="${escapeHTML(thumbUrl)}" alt="Preview of ${escapeHTML(project.title)}" loading="lazy" />
+        </div>
+      ` : ''}
+      ${tech ? `<div class="project-tech">${tech}</div>` : ''}
+      ${sections ? `<div class="project-modal-sections">${sections}</div>` : ''}
+      ${links ? `<div class="project-modal-actions">${links}</div>` : ''}
+    `;
+  }
+
+  function openProjectModal(project) {
+    const modal = document.getElementById('projectModal');
+    const body = document.getElementById('projectModalBody');
+    if (!modal || !body || !project) return;
+
+    body.innerHTML = buildProjectModalHTML(project);
+    modalLastFocused = document.activeElement;
+
+    modal.hidden = false;
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+    requestAnimationFrame(() => modal.classList.add('open'));
+
+    const closeBtn = document.getElementById('projectModalClose');
+    if (closeBtn) closeBtn.focus();
+  }
+
+  function closeProjectModal() {
+    const modal = document.getElementById('projectModal');
+    if (!modal || modal.hidden) return;
+
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+
+    const finish = (event) => {
+      if (event && event.target !== modal) return;
+      modal.hidden = true;
+      modal.removeEventListener('transitionend', finish);
+    };
+    modal.addEventListener('transitionend', finish);
+    setTimeout(finish, 300);
+
+    if (modalLastFocused && typeof modalLastFocused.focus === 'function') {
+      modalLastFocused.focus();
+    }
+    modalLastFocused = null;
+  }
+
+  function setupProjectModal() {
+    const modal = document.getElementById('projectModal');
+    if (!modal) return;
+
+    document.addEventListener('click', (event) => {
+      const trigger = event.target.closest('[data-project-modal]');
+      if (trigger) {
+        const project = projectsCache.find(p => String(p.id) === String(trigger.dataset.projectModal));
+        if (project) openProjectModal(project);
+        return;
+      }
+      if (event.target.closest('[data-project-modal-close]')) {
+        closeProjectModal();
+      }
+    });
+
+    document.getElementById('projectModalClose')
+      ?.addEventListener('click', closeProjectModal);
+
+    document.addEventListener('keydown', (event) => {
+      if (modal.hidden) return;
+
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        closeProjectModal();
+        return;
+      }
+
+      if (event.key === 'Tab') {
+        const focusable = modal.querySelectorAll(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    });
   }
 
   /* ========================================================
@@ -622,6 +837,18 @@
         contact: `Contact - ${cmsSiteTitle}`,
       };
       document.title = cmsTitles[pageId] || cmsTitles.home;
+
+      // Announce the route change to assistive technology
+      let liveRegion = document.getElementById('routeAnnouncer');
+      if (!liveRegion) {
+        liveRegion = document.createElement('div');
+        liveRegion.id = 'routeAnnouncer';
+        liveRegion.setAttribute('aria-live', 'polite');
+        liveRegion.setAttribute('role', 'status');
+        liveRegion.className = 'visually-hidden';
+        document.body.appendChild(liveRegion);
+      }
+      liveRegion.textContent = cmsTitles[pageId] || cmsTitles.home;
     }
   }
 
@@ -667,11 +894,39 @@
   const navToggle = document.getElementById('navToggle');
   const mobileMenu = document.getElementById('mobileMenu');
 
+  // Theme toggle auto-hide on mobile: hides while scrolling down, returns on scroll up
+  let lastScrollY = window.scrollY;
+  const themeToggleBtn = document.getElementById('themeToggle');
+  function updateThemeToggleVisibility() {
+    if (!themeToggleBtn) return;
+    if (window.innerWidth > 1023) {
+      themeToggleBtn.classList.remove('toggle-hidden');
+      return;
+    }
+    const y = window.scrollY;
+    if (y > lastScrollY + 4 && y > 120) {
+      themeToggleBtn.classList.add('toggle-hidden');
+    } else if (y < lastScrollY - 4 || y <= 120) {
+      themeToggleBtn.classList.remove('toggle-hidden');
+    }
+    lastScrollY = y;
+  }
+
   window.addEventListener('scroll', () => {
     if (navbar) navbar.classList.toggle('nav-scrolled', window.scrollY > 80);
     const si = document.getElementById('scrollIndicator');
     if (si && window.scrollY > 100) si.classList.add('hidden');
-  });
+    updateThemeToggleVisibility();
+  }, { passive: true });
+
+  function closeMobileMenu() {
+    if (!navToggle || !mobileMenu) return;
+    navToggle.classList.remove('open');
+    mobileMenu.classList.remove('open');
+    navToggle.setAttribute('aria-expanded', 'false');
+    mobileMenu.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
 
   if (navToggle && mobileMenu) {
     navToggle.addEventListener('click', () => {
@@ -683,13 +938,14 @@
     });
 
     mobileMenu.querySelectorAll('.mobile-nav-link').forEach((link) => {
-      link.addEventListener('click', () => {
-        navToggle.classList.remove('open');
-        mobileMenu.classList.remove('open');
-        navToggle.setAttribute('aria-expanded', 'false');
-        mobileMenu.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
-      });
+      link.addEventListener('click', closeMobileMenu);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && mobileMenu.classList.contains('open')) {
+        closeMobileMenu();
+        navToggle.focus();
+      }
     });
   }
 
@@ -866,6 +1122,7 @@
   const router = new Router();
   observeReveals(document.getElementById('home'));
   setupThemeToggle();
+  setupProjectModal();
   
   // Load all data from API
   loadAllData();

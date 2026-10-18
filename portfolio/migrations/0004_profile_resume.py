@@ -4,15 +4,18 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """
+    Profile.resume is already added in 0002_cms_settings_sections.
+
+    This migration used to add the same column again, which raised
+    "duplicate column name: resume" on any fresh database and blocked
+    `migrate` entirely. It is kept as a no-op so the migration history
+    (and the 0005 dependency) stays intact for databases that already
+    recorded it.
+    """
 
     dependencies = [
         ('portfolio', '0003_alter_profile_resume_url'),
     ]
 
-    operations = [
-        migrations.AddField(
-            model_name='profile',
-            name='resume',
-            field=models.FileField(blank=True, help_text='Upload your resume (PDF)', null=True, upload_to='resumes/'),
-        ),
-    ]
+    operations = []

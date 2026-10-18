@@ -13,6 +13,10 @@ class GlowyWaves {
     this.targetMouse = { x: 0, y: 0 };
     this.time = 0;
     this.animationId = null;
+    this.inView = true;
+    this.dpr = 1;
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
 
     // Configuration
     this.config = {
@@ -67,10 +71,14 @@ class GlowyWaves {
     this.resizeCanvas();
     this.recenterMouse();
     this.updateTheme();
-    
-    window.addEventListener('resize', () => this.handleResize());
-    window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-    window.addEventListener('mouseleave', () => this.recenterMouse());
+
+    this._onResize = () => this.handleResize();
+    this._onMouseMove = (e) => this.handleMouseMove(e);
+    this._onMouseLeave = () => this.recenterMouse();
+
+    window.addEventListener('resize', this._onResize);
+    window.addEventListener('mousemove', this._onMouseMove);
+    window.addEventListener('mouseleave', this._onMouseLeave);
     
     // Watch for theme changes
     const observer = new MutationObserver(() => this.updateTheme());
@@ -78,8 +86,21 @@ class GlowyWaves {
       attributes: true,
       attributeFilter: ['data-theme']
     });
+    this.themeObserver = observer;
+
+    // Pause the animation loop when the hero is off-screen or the tab is hidden
+    if ('IntersectionObserver' in window) {
+      this.viewObserver = new IntersectionObserver((entries) => {
+        this.inView = entries.some((entry) => entry.isIntersecting);
+        this.updateRunState();
+      }, { threshold: 0 });
+      this.viewObserver.observe(this.canvas);
+    }
+
+    this._onVisibility = () => this.updateRunState();
+    document.addEventListener('visibilitychange', this._onVisibility);
     
-    this.animate();
+    this.start();
   }
 
   updateTheme() {
@@ -87,14 +108,24 @@ class GlowyWaves {
   }
 
   resizeCanvas() {
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
+    // Scale for devicePixelRatio so waves stay crisp on retina screens
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    this.dpr = dpr;
+    this.width = width;
+    this.height = height;
+    this.canvas.width = Math.round(width * dpr);
+    this.canvas.height = Math.round(height * dpr);
+    this.canvas.style.width = `${width}px`;
+    this.canvas.style.height = `${height}px`;
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   recenterMouse() {
     const centerPoint = {
-      x: this.canvas.width / 2,
-      y: this.canvas.height / 2
+      x: this.width / 2,
+      y: this.height / 2
     };
     this.mouse = { ...centerPoint };
     this.targetMouse = { ...centerPoint };
@@ -112,19 +143,37 @@ class GlowyWaves {
     };
   }
 
+  start() {
+    if (this.animationId) return;
+    this.animationId = requestAnimationFrame(() => this.animate());
+  }
+
+  stop() {
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+  }
+
+  updateRunState() {
+    const shouldRun = this.inView && !document.hidden;
+    if (shouldRun) this.start();
+    else this.stop();
+  }
+
   drawWave(wave) {
     this.ctx.save();
     this.ctx.beginPath();
 
-    for (let x = 0; x <= this.canvas.width; x += 4) {
+    for (let x = 0; x <= this.width; x += 4) {
       const dx = x - this.mouse.x;
-      const dy = this.canvas.height / 2 - this.mouse.y;
+      const dy = this.height / 2 - this.mouse.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
       const influence = Math.max(0, 1 - distance / this.config.influenceRadius);
       const mouseEffect = influence * this.config.mouseInfluence *
         Math.sin(this.time * 0.001 + x * 0.01 + wave.offset);
 
-      const y = this.canvas.height / 2 +
+      const y = this.height / 2 +
         Math.sin(x * wave.frequency + this.time * 0.002 + wave.offset) * wave.amplitude +
         Math.sin(x * wave.frequency * 0.4 + this.time * 0.003) * (wave.amplitude * 0.45) +
         mouseEffect;
@@ -147,6 +196,11 @@ class GlowyWaves {
   }
 
   animate() {
+    if (!this.inView || document.hidden) {
+      this.animationId = null;
+      return;
+    }
+
     this.time += 1;
 
     // Smooth mouse movement
@@ -154,7 +208,7 @@ class GlowyWaves {
     this.mouse.y += (this.targetMouse.y - this.mouse.y) * this.config.smoothing;
 
     // Clear background so underlying CSS theme gradient shows through cleanly
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.clearRect(0, 0, this.width, this.height);
 
     // Reset canvas state
     this.ctx.globalAlpha = 1;
@@ -167,12 +221,13 @@ class GlowyWaves {
   }
 
   destroy() {
-    if (this.animationId) {
-      cancelAnimationFrame(this.animationId);
-    }
-    window.removeEventListener('resize', this.handleResize);
-    window.removeEventListener('mousemove', this.handleMouseMove);
-    window.removeEventListener('mouseleave', this.recenterMouse);
+    this.stop();
+    if (this.viewObserver) this.viewObserver.disconnect();
+    if (this.themeObserver) this.themeObserver.disconnect();
+    window.removeEventListener('resize', this._onResize);
+    window.removeEventListener('mousemove', this._onMouseMove);
+    window.removeEventListener('mouseleave', this._onMouseLeave);
+    document.removeEventListener('visibilitychange', this._onVisibility);
   }
 }
 
